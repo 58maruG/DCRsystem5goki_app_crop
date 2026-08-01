@@ -10,6 +10,7 @@ scale=1.0（無効・従来どおり）と scale=0.5 の両方で実行し、
     python standalone/test_hsv_detect_scale.py
 """
 
+import json
 import os
 import sys
 
@@ -18,8 +19,29 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import cv2
 import numpy as np
 
-import module_yolo_csv4_v3 as yolo_mod
-from module_yolo_csv4_v3 import ImageProcessor
+import module_yolo as yolo_mod
+from module_yolo import ImageProcessor
+
+# json/hsv_config_{cam}.json は必須（無ければ _load_hsv_config が例外を送出する）ため、
+# 「_refineなし」経路を検証するには実ファイルを持つ一時カメラ名を用意する必要がある。
+NO_REFINE_CAM = "__scale_test_no_refine"
+
+
+def write_no_refine_config() -> str:
+    """虚像除去・果柄除去とも無効な設定を NO_REFINE_CAM 用に書き出し、パスを返す。"""
+    cfg = {
+        "lower1": [0, 100, 100],   "upper1": [32, 255, 255],
+        "lower2": [160, 100, 100], "upper2": [180, 255, 255],
+        "reflect_sat_lo": 0, "reflect_sat_hi": 255,
+        "reflect_v_lo":   0, "reflect_v_hi":   255,
+        "stem_open":      0,
+        "min_blob_area":  500,
+        "fruit_speed_px": 87,
+    }
+    path = os.path.join("json", f"hsv_config_{NO_REFINE_CAM}.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(cfg, f)
+    return path
 
 
 def make_synthetic_frame(size: int, box, hue: int, sat: int, val: int, bg_val: int = 60) -> np.ndarray:
@@ -61,10 +83,14 @@ def run_case(label: str, frame: np.ndarray, cam_name, expect_refine: bool):
 def main():
     all_ok = True
 
-    # ケース1: 実運用ファイルが無いカメラ名 → DEFAULT_HSV_CFGを使う「_refineなし」経路
-    frame1 = make_synthetic_frame(
-        size=640, box=(180, 180, 380, 380), hue=15, sat=200, val=180)
-    all_ok &= run_case("cfg=default(no refine)", frame1, cam_name="__scale_test_no_json", expect_refine=False)
+    # ケース1: 虚像除去・果柄除去とも無効な設定（一時ファイル）→「_refineなし」経路
+    no_refine_path = write_no_refine_config()
+    try:
+        frame1 = make_synthetic_frame(
+            size=640, box=(180, 180, 380, 380), hue=15, sat=200, val=180)
+        all_ok &= run_case("cfg=no_refine", frame1, cam_name=NO_REFINE_CAM, expect_refine=False)
+    finally:
+        os.remove(no_refine_path)
 
     # ケース2: 実運用JSON(cam_inside, 560x560, stem_open=20)を使う「_refineあり」経路
     frame2 = make_synthetic_frame(

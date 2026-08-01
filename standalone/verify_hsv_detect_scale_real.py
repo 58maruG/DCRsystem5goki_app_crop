@@ -26,8 +26,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import cv2
 import numpy as np
 
-import module_yolo_csv4_v3 as yolo_mod
-from module_yolo_csv4_v3 import ImageProcessor
+import module_yolo as yolo_mod
+from module_yolo import ImageProcessor
 
 CAM_RE = re.compile(r"cam_(top|under|inside|outside)")
 

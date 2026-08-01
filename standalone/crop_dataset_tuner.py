@@ -6,8 +6,8 @@
 スライダーで調整するHSVゲート・虚像除去・果柄除去・最小面積・推論ゲートの
 定義とget_target_info同一手順の再現(analyze関数)はhsv_calibration.pyと共通。
 
-hsv_calibration.py同様、module_yolo_csv4_v3(ultralytics/torch)は読み込まない
-軽量ツール。crop_from_stat()はmodule_yolo_csv4_v3.ImageProcessor.dynamic_cropと
+hsv_calibration.py同様、module_yolo(ultralytics/torch)は読み込まない
+軽量ツール。crop_from_stat()はmodule_yolo.ImageProcessor.dynamic_cropと
 同じ計算式をここで再実装している（変更する場合は両方揃えること）。
 
 使い方:
@@ -46,7 +46,7 @@ from hsv_mask_utils import (  # noqa: E402
 )
 
 # ==========================================================
-# 設定（module_yolo_csv4_v3 と同じ既定値。変更する場合は両方揃えること）
+# 設定（module_yolo と同じ既定値。変更する場合は両方揃えること）
 # ==========================================================
 PREVIEW_SIZE = 480
 
@@ -66,8 +66,8 @@ DEFAULT_FRUIT_SPEED_PX = {
     "cam_top": 87, "cam_under": 87, "cam_inside": 91, "cam_outside": 87,
 }
 FALLBACK_FRUIT_SPEED_PX = 87
-INFER_FRAMES_PER_CAM = 5   # module_yolo_csv4_v3 側と必ず揃えること
-YOLO_IMG_SIZE = 640        # module_yolo_csv4_v3.YOLO_IMG_SIZE と必ず揃えること
+INFER_FRAMES_PER_CAM = 5   # module_yolo 側と必ず揃えること
+YOLO_IMG_SIZE = 640        # module_yolo.YOLO_IMG_SIZE と必ず揃えること
 
 # 4カメラのタブ順（cam_name, ラベル）
 CAMERAS = [
@@ -307,9 +307,8 @@ def _paste(sub, h, w, x0, y0):
 
 
 def _touches_edge(stat, w, h) -> bool:
-    return bool(stat[0] <= EDGE_MARGIN or stat[1] <= EDGE_MARGIN
-                or (stat[0] + stat[2]) >= (w - EDGE_MARGIN)
-                or (stat[1] + stat[3]) >= (h - EDGE_MARGIN))
+    # 左右端接触のみ棄却（上下端は許容。module_yolo.get_target_info と同じ規則）
+    return bool(stat[0] <= EDGE_MARGIN or (stat[0] + stat[2]) >= (w - EDGE_MARGIN))
 
 
 def band_lines(w, half):
@@ -362,7 +361,7 @@ def to_pixmap(frame: np.ndarray, size: int) -> QPixmap:
 
 
 # ==========================================================
-# クロップ（module_yolo_csv4_v3.ImageProcessor.dynamic_crop と同一式）
+# クロップ（module_yolo.ImageProcessor.dynamic_crop と同一式）
 # ==========================================================
 def crop_box_from_stat(stat, mx, my, w, h) -> tuple[int, int, int, int]:
     size = min(int(max(stat[2], stat[3]) * 1.5), w, h)
